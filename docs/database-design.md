@@ -106,54 +106,75 @@ The exact API endpoints and permissions will be defined during implementation.
 
 ### Design
 
-User
-----
-id
-username
-email
-password_hash
-created_at
+users
+─────────────────────────────────
+id                UUID PK
+username          VARCHAR NOT NULL UNIQUE
+email             VARCHAR NOT NULL UNIQUE
+password_hash     VARCHAR NOT NULL
+application_role  ENUM NOT NULL
+created_at        TIMESTAMP NOT NULL
 
-Project
--------
-id
-name
-description
-created_at
-updated_at
+projects
+──────────────────────────────
+id           UUID PK
+name         VARCHAR NOT NULL
+description  TEXT
+created_at   TIMESTAMP NOT NULL
+updated_at   TIMESTAMP NOT NULL
 
-ProjectMember
--------------
-user_id
-project_id
-role
-joined_at
+project_members
+────────────────────────────────
+user_id       UUID FK NOT NULL
+project_id    UUID FK NOT NULL
+role          ENUM NOT NULL
+joined_at     TIMESTAMP NOT NULL
 
-Task
-----
-id
-project_id
-creator_id
-title
-description
-status
-priority
-created_at
-updated_at
+UNIQUE(user_id, project_id)
 
-TaskAssignee
-------------
-task_id
-user_id
+tasks
+────────────────────────────────
+id            UUID PK
+project_id    UUID FK NOT NULL
+creator_id    UUID FK NULL
+title         VARCHAR NOT NULL
+description   TEXT
+status        ENUM NOT NULL
+priority      ENUM NOT NULL
+created_at    TIMESTAMP NOT NULL
+updated_at    TIMESTAMP NOT NULL
 
-Comment
--------
-id
-task_id
-user_id
-content
-created_at
-updated_at
+task_assignees
+──────────────────────────
+task_id       UUID FK NOT NULL
+user_id       UUID FK NOT NULL
+
+UNIQUE(task_id, user_id)
+
+comments
+────────────────────────────────
+id           UUID PK
+task_id      UUID FK NOT NULL
+user_id      UUID FK NULL
+content      TEXT NOT NULL
+created_at   TIMESTAMP NOT NULL
+updated_at   TIMESTAMP NOT NULL
+
+users
+    project_members.user_id
+    tasks.creator_id
+    task_assignees.user_id
+    comments.user_id
+
+
+projects
+    project_members.project_id
+    tasks.project_id
+
+
+tasks
+    task_assignees.task_id
+    comments.task_id
 
 ## Design Decisions
 
@@ -185,6 +206,11 @@ Projects will initially support two roles:
 - MEMBER
 
 Roles are associated with project membership rather than being global user roles.
+
+### User Roles
+
+- ADMIN
+- USER
 
 ### User Uniqueness
 
@@ -240,3 +266,29 @@ A comment:
 1. Must belong to an existing task.
 2. Must have one author.
 3. The author must be a member of the project containing the task.
+
+## Delete Behavior
+
+| Relationship               | On deletion |
+| -------------------------- | ----------- |
+| ProjectMember.user_id      | CASCADE     |
+| ProjectMember.project_id   | CASCADE     |
+| TaskAssignee.user_id       | CASCADE     |
+| TaskAssignee.task_id       | CASCADE     |
+| Comment.user_id            | SET NULL    |
+| Comment.task_id            | CASCADE     |
+| Task.creator_id            | SET NULL    |
+| Task.project_id            | RESTRICT    |
+
+## Indexes
+
+tasks.project_id
+tasks.creator_id
+
+project_members.user_id
+project_members.project_id
+
+task_assignees.task_id
+task_assignees.user_id
+
+comments.task_id
