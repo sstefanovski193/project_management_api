@@ -1,0 +1,11 @@
+[project]
+name = "project-management-api"
+version = "0.1.0"
+description = "A backend API for managing projects, tasks, users and comments."
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi[standard]",
+    "sqlalchemy",
+    "psycopg[binary]",
+    "pydantic-settings",
+]
