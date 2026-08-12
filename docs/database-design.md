@@ -284,11 +284,6 @@ A comment:
 
 tasks.project_id
 tasks.creator_id
-
-project_members.user_id
 project_members.project_id
-
-task_assignees.task_id
 task_assignees.user_id
-
 comments.task_id

@@ -57,6 +57,10 @@ class User(Base):
     project_memberships: Mapped[list["ProjectMember"]] = relationship(
         back_populates="user"
     )
+    assigned_tasks: Mapped[list["Task"]] = relationship(
+        secondary="task_assignees", back_populates="asignees"
+    )
+    comments: Mapped[list["Comment"]] = relationship(back_populates="author")
 
 
 class Project(Base):
@@ -83,10 +87,17 @@ class ProjectMember(Base):
     __tablename__ = "project_members"
 
     user_id: Mapped[UUID] = mapped_column(
-        SQLAlchemyUUID, ForeignKey("user.id"), nullable=False, primary_key=True
+        SQLAlchemyUUID,
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        primary_key=True,
     )
     project_id: Mapped[UUID] = mapped_column(
-        SQLAlchemyUUID, ForeignKey("project.id"), nullable=False, primary_key=True
+        SQLAlchemyUUID,
+        ForeignKey("projects.id", ondelete="CASCADE"),
+        nullable=False,
+        primary_key=True,
+        index=True,
     )
     role: Mapped[ProjectRole] = mapped_column(
         SQLAlchemyEnum(ProjectRole), nullable=False
@@ -105,10 +116,16 @@ class Task(Base):
 
     id: Mapped[UUID] = mapped_column(SQLAlchemyUUID, primary_key=True, default=uuid4)
     project_id: Mapped[UUID] = mapped_column(
-        SQLAlchemyUUID, ForeignKey("projects.id"), nullable=False
+        SQLAlchemyUUID,
+        ForeignKey("projects.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
     )
-    creator_id: Mapped[UUID] = mapped_column(
-        SQLAlchemyUUID, ForeignKey("users.id"), nullable=False
+    creator_id: Mapped[UUID | None] = mapped_column(
+        SQLAlchemyUUID,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
     )
     title: Mapped[str] = mapped_column(String, nullable=False)
     description: Mapped[str | None] = mapped_column(String, nullable=True)
@@ -125,4 +142,50 @@ class Task(Base):
         default=lambda: datetime.now(timezone.utc),
     )
     project: Mapped["Project"] = relationship(back_populates="tasks")
-    creator: Mapped["User"] = relationship(back_populates="created_tasks")
+    creator: Mapped["User | None"] = relationship(back_populates="created_tasks")
+    asignees: Mapped[list["User"]] = relationship(
+        secondary="task_asignees", back_populates="assigned_tasks"
+    )
+    comments: Mapped[list["Comment"]] = relationship(back_populates="task")
+
+
+class TaskAsignee(Base):
+    __tablename__ = "task_asignees"
+
+    task_id: Mapped[UUID] = mapped_column(
+        SQLAlchemyUUID, ForeignKey("tasks.id", ondelete="CASCADE"), primary_key=True
+    )
+    user_id: Mapped[UUID] = mapped_column(
+        SQLAlchemyUUID,
+        ForeignKey("users.id", ondelete="CASCADE"),
+        primary_key=True,
+        index=True,
+    )
+
+
+class Comment(Base):
+    __tablename__ = "comments"
+
+    id: Mapped[UUID] = mapped_column(SQLAlchemyUUID, primary_key=True, default=uuid4)
+    task_id: Mapped[UUID] = mapped_column(
+        SQLAlchemyUUID,
+        ForeignKey("tasks.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    user_id: Mapped[UUID | None] = mapped_column(
+        SQLAlchemyUUID, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    content: Mapped[str] = mapped_column(String, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+    )
+    task: Mapped["Task"] = relationship(back_populates="comments")
+    author: Mapped["User | None"] = relationship(back_populates="comments")

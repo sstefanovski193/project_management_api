@@ -8,4 +8,5 @@ dependencies = [
     "sqlalchemy",
     "psycopg[binary]",
     "pydantic-settings",
+    "alembic",
 ]
