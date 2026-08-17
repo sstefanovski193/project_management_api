@@ -1,5 +1,6 @@
 from uuid import UUID
 from datetime import datetime
+from enum import Enum
 
 from pydantic import BaseModel, ConfigDict
 
@@ -20,3 +21,14 @@ class UserResponse(BaseModel):
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class SortOrder(str, Enum):
+    ASC = "asc"
+    DESC = "desc"
+
+
+class UserSortField(str, Enum):
+    USERNAME = "username"
+    EMAIL = "email"
+    CREATED_AT = "created_at"
