@@ -58,7 +58,7 @@ class User(Base):
         back_populates="user"
     )
     assigned_tasks: Mapped[list["Task"]] = relationship(
-        secondary="task_assignees", back_populates="asignees"
+        secondary="task_asignees", back_populates="asignees"
     )
     comments: Mapped[list["Comment"]] = relationship(back_populates="author")
 

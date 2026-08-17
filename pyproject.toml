@@ -9,4 +9,9 @@ dependencies = [
     "psycopg[binary]",
     "pydantic-settings",
     "alembic",
+    "pwdlib[argon2]",
 ]
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+exclude = ["alembic*"]
