@@ -4,34 +4,13 @@ from enum import Enum
 
 from pydantic import BaseModel, ConfigDict
 
-from app.models import ApplicationRole, ProjectRole
+from app.models import ProjectRole
 
 
-class UserCreate(BaseModel):
-    username: str
-    email: str
-    password: str
-
-
-class UserResponse(BaseModel):
-    id: UUID
-    username: str
-    email: str
-    application_role: ApplicationRole
-    created_at: datetime
-
-    model_config = ConfigDict(from_attributes=True)
-
-
-class SortOrder(str, Enum):
-    ASC = "asc"
-    DESC = "desc"
-
-
-class UserSortField(str, Enum):
-    USERNAME = "username"
-    EMAIL = "email"
+class ProjectSortField(str, Enum):
+    NAME = "name"
     CREATED_AT = "created_at"
+    UPDATED_AT = "updated_at"
 
 
 class ProjectCreate(BaseModel):
@@ -72,12 +51,6 @@ class ProjectMemberResponse(BaseModel):
 class ProjectDetailResponse(ProjectResponse):
     memberships: list[ProjectMemberResponse]
     # TODO: add tasks once task endpoints are implemented
-
-
-class ProjectSortField(str, Enum):
-    NAME = "name"
-    CREATED_AT = "created_at"
-    UPDATED_AT = "updated_at"
 
 
 class ProjectMemberCreate(BaseModel):
