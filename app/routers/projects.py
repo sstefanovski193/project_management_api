@@ -22,6 +22,18 @@ router = APIRouter(prefix="/projects", tags=["Projects"])
 
 @router.post("", response_model=ProjectResponse)
 def create_project(project_data: ProjectCreate, db: Session = Depends(get_db)):
+    """Create a project.
+
+    Args:
+        project_data: Name, description and creator_id.
+
+    Raises:
+        HTTPException: If the creator_id is not a vlid ID of a user.
+        HTTPException: If database integrity constraint is violated.
+
+    Returns:
+        The created project.
+    """
     # TODO: update once authentication is implemented
     user_query = select(User).where(User.id == project_data.creator_id)
     creator = db.execute(user_query).scalar_one_or_none()
@@ -55,6 +67,21 @@ def create_project(project_data: ProjectCreate, db: Session = Depends(get_db)):
 def add_project_member(
     project_id: UUID, project_member: ProjectMemberCreate, db: Session = Depends(get_db)
 ):
+    """Add a member to a project.
+
+    Args:
+        project_id: Project.id
+        project_member: user_id and ProjectRole.MEMBER.
+
+    Raises:
+        HTTPException: If user is not found.
+        HTTPException: If project is not found.
+        HTTPException: If the user is already a member of the project.
+        HTTPException: If database integrity constraint is violated.
+
+    Returns:
+        The created project membership.
+    """
     member_query = select(User).where(User.id == project_member.user_id)
     member = db.execute(member_query).scalar_one_or_none()
 
@@ -97,6 +124,18 @@ def add_project_member(
 def delete_project_member(
     project_id: UUID, user_id: UUID, db: Session = Depends(get_db)
 ):
+    """Delete a member from a project.
+
+    Args:
+        project_id: ID of the project.
+        user_id: ID of the user.
+
+    Raises:
+        HTTPException: If project membership is not found.
+
+    Returns:
+        Confirmation message.
+    """
     query = select(ProjectMember).where(
         ProjectMember.user_id == user_id, ProjectMember.project_id == project_id
     )
@@ -113,6 +152,17 @@ def delete_project_member(
 
 @router.get("/{project_id}", response_model=ProjectDetailResponse)
 def get_project(project_id: UUID, db: Session = Depends(get_db)):
+    """Get project by ID.
+
+    Args:
+        project_id: ID of the project.
+
+    Raises:
+        HTTPException: If the project is not found.
+
+    Returns:
+        The requested project.
+    """
     query = (
         select(Project)
         .where(Project.id == project_id)
@@ -134,6 +184,15 @@ def get_projects(
     sort_order: SortOrder = SortOrder.DESC,
     db: Session = Depends(get_db),
 ):
+    """Get projects.
+
+    Args:
+        sort_by: Sort by NAME, CREATED_AT or UPDATED_AT. Defaults to ProjectSortField.CREATED_AT.
+        sort_order: Sort order by asc or desc. Defaults to SortOrder.DESC.
+
+    Returns:
+        A list of projects.
+    """
     # TODO: add filtering use cases for get projects
 
     sort_columns = {

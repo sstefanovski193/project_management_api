@@ -16,6 +16,17 @@ router = APIRouter(prefix="/users", tags=["Users"])
 
 @router.post("", response_model=UserResponse)
 def create_user(user_data: UserCreate, db: Session = Depends(get_db)):
+    """Create user.
+
+    Args:
+        user_data: Username, email and password.
+
+    Raises:
+        HTTPException: If the user doesn't exist.
+
+    Returns:
+        The created user.
+    """
     user = User(
         username=user_data.username,
         email=user_data.email,
@@ -36,6 +47,17 @@ def create_user(user_data: UserCreate, db: Session = Depends(get_db)):
 
 @router.get("/{user_id}", response_model=UserResponse)
 def get_user(user_id: UUID, db: Session = Depends(get_db)):
+    """Get user by ID.
+
+    Args:
+        user_id: ID of the user.
+
+    Raises:
+        HTTPException: If the user is not found.
+
+    Returns:
+        The requested user.
+    """
     query = select(User).where(User.id == user_id)
     user = db.execute(query).scalar_one_or_none()
 
@@ -54,6 +76,16 @@ def get_users(
     application_role: ApplicationRole | None = None,
     db: Session = Depends(get_db),
 ):
+    """Get users.
+
+    Args:
+        sort_by: Sort by USERNAME, EMAIL or CREATED_AT. Defaults to UserSortField.CREATED_AT.
+        sort_order: Sort order by asc or desc. Defaults to SortOrder.DESC.
+        application_role: ApplicationRole of the users. Defaults to None.
+
+    Returns:
+        A list of users.
+    """
     sort_columns = {
         UserSortField.USERNAME: User.username,
         UserSortField.EMAIL: User.email,
