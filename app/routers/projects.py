@@ -82,6 +82,7 @@ def add_project_member(
     Returns:
         The created project membership.
     """
+    # TODO: update once authentication is implemented
     member_query = select(User).where(User.id == project_member.user_id)
     member = db.execute(member_query).scalar_one_or_none()
 
@@ -136,6 +137,7 @@ def delete_project_member(
     Returns:
         Confirmation message.
     """
+    # TODO: update once authentication is implemented
     query = select(ProjectMember).where(
         ProjectMember.user_id == user_id, ProjectMember.project_id == project_id
     )
@@ -166,7 +168,10 @@ def get_project(project_id: UUID, db: Session = Depends(get_db)):
     query = (
         select(Project)
         .where(Project.id == project_id)
-        .options(selectinload(Project.memberships).selectinload(ProjectMember.user))
+        .options(
+            selectinload(Project.memberships).selectinload(ProjectMember.user),
+            selectinload(Project.tasks),
+        )
     )
     project = db.execute(query).scalar_one_or_none()
 

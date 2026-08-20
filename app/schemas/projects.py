@@ -4,7 +4,7 @@ from enum import Enum
 
 from pydantic import BaseModel, ConfigDict
 
-from app.models import ProjectRole
+from app.models import ProjectRole, Status, Priority
 
 # TODO: Add Field description for the Swagger UI docs
 
@@ -58,11 +58,23 @@ class ProjectMemberResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class ProjectTaskResponse(BaseModel):
+    """Task information included in a detailed project response."""
+
+    id: UUID
+    title: str
+    description: str | None
+    status: Status
+    priority: Priority
+    created_at: datetime
+    updated_at: datetime
+
+
 class ProjectDetailResponse(ProjectResponse):
     """Response representation for a project, including memberships and tasks."""
 
     memberships: list[ProjectMemberResponse]
-    # TODO: add tasks once task endpoints are implemented
+    tasks: list[ProjectTaskResponse]
 
 
 class ProjectMemberCreate(BaseModel):
