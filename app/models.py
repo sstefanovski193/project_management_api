@@ -58,7 +58,7 @@ class User(Base):
         back_populates="user"
     )
     assigned_tasks: Mapped[list["Task"]] = relationship(
-        secondary="task_asignees", back_populates="asignees"
+        secondary="task_assignees", back_populates="assignees"
     )
     comments: Mapped[list["Comment"]] = relationship(back_populates="author")
 
@@ -143,14 +143,14 @@ class Task(Base):
     )
     project: Mapped["Project"] = relationship(back_populates="tasks")
     creator: Mapped["User | None"] = relationship(back_populates="created_tasks")
-    asignees: Mapped[list["User"]] = relationship(
-        secondary="task_asignees", back_populates="assigned_tasks"
+    assignees: Mapped[list["User"]] = relationship(
+        secondary="task_assignees", back_populates="assigned_tasks"
     )
     comments: Mapped[list["Comment"]] = relationship(back_populates="task")
 
 
-class TaskAsignee(Base):
-    __tablename__ = "task_asignees"
+class TaskAssignee(Base):
+    __tablename__ = "task_assignees"
 
     task_id: Mapped[UUID] = mapped_column(
         SQLAlchemyUUID, ForeignKey("tasks.id", ondelete="CASCADE"), primary_key=True

@@ -38,7 +38,7 @@ def get_task_by_id_with_relationships(task_id: UUID, db: Session) -> Task | None
         .options(
             selectinload(Task.project),
             selectinload(Task.creator),
-            selectinload(Task.asignees),
+            selectinload(Task.assignees),
         )
     )
     task = db.execute(task_query).scalar_one_or_none()

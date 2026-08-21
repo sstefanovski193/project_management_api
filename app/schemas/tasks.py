@@ -43,7 +43,7 @@ class TaskCreatorResponse(BaseModel):
     username: str
 
 
-class TaskAsigneeResponse(BaseModel):
+class TaskAssigneeResponse(BaseModel):
     """Assignee information included in a detailed task response."""
 
     id: UUID
@@ -51,14 +51,14 @@ class TaskAsigneeResponse(BaseModel):
 
 
 class TaskDetailResponse(TaskResponse):
-    """Response representation for a task, including projec,t creator and asignees."""
+    """Response representation for a task, including projec,t creator and assignees."""
 
     project: TaskProjectResponse
     creator: TaskCreatorResponse
-    asignees: list[TaskAsigneeResponse] | None
+    assignees: list[TaskAssigneeResponse] | None
 
 
-class TaskAsigneeCreate(BaseModel):
+class TaskAssigneeCreate(BaseModel):
     """Data required to add an assignee to a task."""
 
     username: str

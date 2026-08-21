@@ -6,12 +6,12 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
 from app.db.database import get_db
-from app.models import Task, Project, User, ProjectMember, TaskAsignee
+from app.models import Task, Project, User, ProjectMember, TaskAssignee
 from app.schemas.tasks import (
     TaskCreate,
     TaskResponse,
     TaskDetailResponse,
-    TaskAsigneeCreate,
+    TaskAssigneeCreate,
 )
 from app.services.tasks import (
     get_task_by_id,
@@ -105,17 +105,17 @@ def get_task(task_id: UUID, db: Session = Depends(get_db)):
     return task
 
 
-@router.post("/{task_id}/asignees")
-def add_task_asignee(
+@router.post("/{task_id}/assignees")
+def add_task_assignee(
     task_id: UUID,
-    asignee_data: TaskAsigneeCreate,
+    assignee_data: TaskAssigneeCreate,
     db: Session = Depends(get_db),
 ):
     """Add an assignee to a task.
 
     Args:
         task_id: ID of the task.
-        asignee_data: username of the assignee(user).
+        assignee_data: username of the assignee(user).
 
     Raises:
         HTTPException: If the task is not found.
@@ -131,7 +131,7 @@ def add_task_asignee(
     if task is None:
         raise HTTPException(status_code=404, detail="Task is not found.")
 
-    user_query = select(User).where(User.username == asignee_data.username)
+    user_query = select(User).where(User.username == assignee_data.username)
     user = db.execute(user_query).scalar_one_or_none()
 
     if user is None:
@@ -147,20 +147,20 @@ def add_task_asignee(
             status_code=403, detail="The user is not a member of the project."
         )
 
-    task_asignee_query = select(TaskAsignee).where(
-        TaskAsignee.task_id == task_id, TaskAsignee.user_id == user.id
+    task_assignee_query = select(TaskAssignee).where(
+        TaskAssignee.task_id == task_id, TaskAssignee.user_id == user.id
     )
-    task_asignee = db.execute(task_asignee_query).scalar_one_or_none()
+    task_assignee = db.execute(task_assignee_query).scalar_one_or_none()
 
-    if task_asignee:
+    if task_assignee:
         raise HTTPException(
-            status_code=409, detail="The user is already asigned to the task."
+            status_code=409, detail="The user is already assigned to the task."
         )
 
-    task_asignee = TaskAsignee(task_id=task_id, user_id=user.id)
+    task_assignee = TaskAssignee(task_id=task_id, user_id=user.id)
 
     try:
-        db.add(task_asignee)
+        db.add(task_assignee)
         db.commit()
     except IntegrityError:
         db.rollback()
@@ -170,7 +170,7 @@ def add_task_asignee(
 
 
 @router.delete("/{task_id}/assignees/{user_id}")
-def delete_task_asignee(task_id: UUID, user_id: UUID, db: Session = Depends(get_db)):
+def delete_task_assignee(task_id: UUID, user_id: UUID, db: Session = Depends(get_db)):
     """Delete an assignee from a task.
 
     Args:
@@ -189,21 +189,21 @@ def delete_task_asignee(task_id: UUID, user_id: UUID, db: Session = Depends(get_
     if task is None:
         raise HTTPException(status_code=404, detail="Task is not found.")
 
-    task_asignee_query = select(TaskAsignee).where(
-        TaskAsignee.task_id == task_id, TaskAsignee.user_id == user_id
+    task_assignee_query = select(TaskAssignee).where(
+        TaskAssignee.task_id == task_id, TaskAssignee.user_id == user_id
     )
-    task_asignee = db.execute(task_asignee_query).scalar_one_or_none()
+    task_assignee = db.execute(task_assignee_query).scalar_one_or_none()
 
-    if task_asignee is None:
+    if task_assignee is None:
         raise HTTPException(
             status_code=404, detail="The user is not assigned to the task."
         )
 
     try:
-        db.delete(task_asignee)
+        db.delete(task_assignee)
         db.commit()
     except IntegrityError:
         db.rollback()
         raise HTTPException(status_code=400)
 
-    return {"message": "Asignee successfully removed"}
+    return {"message": "Assignee successfully removed"}
