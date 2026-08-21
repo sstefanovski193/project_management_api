@@ -6,6 +6,16 @@ from pydantic import BaseModel
 from app.models import Status, Priority
 
 
+from enum import Enum
+
+
+class TaskSortField(str, Enum):
+    """Fields available for sorting tasks."""
+
+    CREATED_AT = "created_at"
+    UPDATED_AT = "updated_at"
+
+
 class TaskCreate(BaseModel):
     """Data required to create a task."""
 

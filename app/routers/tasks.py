@@ -1,18 +1,28 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
 from app.db.database import get_db
-from app.models import Task, Project, User, ProjectMember, TaskAssignee
+from app.models import (
+    Task,
+    Project,
+    User,
+    ProjectMember,
+    TaskAssignee,
+    Status,
+    Priority,
+)
 from app.schemas.tasks import (
     TaskCreate,
     TaskResponse,
     TaskDetailResponse,
     TaskAssigneeCreate,
+    TaskSortField,
 )
+from app.schemas.common import SortOrder
 from app.services.tasks import (
     get_task_by_id,
     get_task_by_id_with_relationships,
@@ -103,6 +113,62 @@ def get_task(task_id: UUID, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Task is not found.")
 
     return task
+
+
+@router.get("", response_model=list[TaskResponse])
+def get_tasks(
+    username: str | None = None,
+    project_name: str | None = None,
+    status: Status | None = None,
+    priority: Priority | None = None,
+    limit: int = Query(default=100, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    sort_by: TaskSortField = TaskSortField.CREATED_AT,
+    sort_order: SortOrder = SortOrder.DESC,
+    db: Session = Depends(get_db),
+):
+    """Retrieve Tasks
+
+    Args:
+        username: Username of an assignee. Defaults to None.
+        project_name: Project name. Defaults to None.
+        status: Status of the task. Defaults to None.
+        priority: Priority of the task. Defaults to None.
+        sort_by: Sort order by CREATED_AT or UPDATED_AT. Defaults to TaskSortField.CREATED_AT.
+        sort_order: Sort order by asc or desc. Defaults to SortOrder.DESC.
+
+    Returns:
+        A list of tasks.
+    """
+    task_query = select(Task)
+
+    if status is not None:
+        task_query = task_query.where(Task.status == status)
+
+    if priority is not None:
+        task_query = task_query.where(Task.priority == priority)
+
+    if project_name is not None:
+        task_query = task_query.where(Task.project.has(Project.name == project_name))
+
+    if username is not None:
+        task_query = task_query.where(Task.assignees.any(User.username == username))
+
+    sort_columns = {
+        TaskSortField.CREATED_AT: Task.created_at,
+        TaskSortField.UPDATED_AT: Task.updated_at,
+    }
+    sort_column = sort_columns[sort_by]
+
+    if sort_order == SortOrder.ASC:
+        task_query = task_query.order_by(sort_column.asc())
+    else:
+        task_query = task_query.order_by(sort_column.desc())
+
+    task_query = task_query.offset(offset).limit(limit)
+    tasks = db.execute(task_query).scalars().all()
+
+    return tasks
 
 
 @router.post("/{task_id}/assignees")
