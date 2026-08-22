@@ -21,7 +21,7 @@ class ProjectCreate(BaseModel):
     """Data required to create a project."""
 
     name: str
-    description: str | None
+    description: str | None = None
     creator_id: UUID
     # TODO: remove creator_id once authentication is implemented
 
@@ -68,6 +68,8 @@ class ProjectTaskResponse(BaseModel):
     priority: Priority
     created_at: datetime
     updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ProjectDetailResponse(ProjectResponse):

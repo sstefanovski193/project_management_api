@@ -1,7 +1,7 @@
 from uuid import UUID
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from app.models import Status, Priority
 
@@ -26,6 +26,15 @@ class TaskCreate(BaseModel):
     priority: Priority = Priority.MEDIUM
 
 
+class TaskModify(BaseModel):
+    """Data to modify a task."""
+
+    title: str | None = None
+    description: str | None = None
+    status: Status | None = None
+    priority: Priority | None = None
+
+
 class TaskResponse(BaseModel):
     """Response representation for a task."""
 
@@ -37,6 +46,8 @@ class TaskResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
+    model_config = ConfigDict(from_attributes=True)
+
 
 class TaskProjectResponse(BaseModel):
     """Project information icnluded in a detailed task response."""
@@ -45,12 +56,16 @@ class TaskProjectResponse(BaseModel):
     name: str
     description: str | None
 
+    model_config = ConfigDict(from_attributes=True)
+
 
 class TaskCreatorResponse(BaseModel):
     """Task creator information included in a detailed task response."""
 
     id: UUID
     username: str
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TaskAssigneeResponse(BaseModel):
@@ -59,13 +74,15 @@ class TaskAssigneeResponse(BaseModel):
     id: UUID
     username: str
 
+    model_config = ConfigDict(from_attributes=True)
+
 
 class TaskDetailResponse(TaskResponse):
     """Response representation for a task, including projec,t creator and assignees."""
 
     project: TaskProjectResponse
-    creator: TaskCreatorResponse
-    assignees: list[TaskAssigneeResponse] | None
+    creator: TaskCreatorResponse | None
+    assignees: list[TaskAssigneeResponse]
 
 
 class TaskAssigneeCreate(BaseModel):

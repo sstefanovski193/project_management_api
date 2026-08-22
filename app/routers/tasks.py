@@ -21,6 +21,7 @@ from app.schemas.tasks import (
     TaskDetailResponse,
     TaskAssigneeCreate,
     TaskSortField,
+    TaskModify,
 )
 from app.schemas.common import SortOrder
 from app.services.tasks import (
@@ -29,7 +30,7 @@ from app.services.tasks import (
 )
 
 router = APIRouter(prefix="/tasks", tags=["Tasks"])
-project_task_router = APIRouter(prefix="/projects/{task_id}/tasks", tags=["Tasks"])
+project_task_router = APIRouter(prefix="/projects/{project_id}/tasks", tags=["Tasks"])
 
 
 @project_task_router.post("", response_model=TaskResponse)
@@ -85,12 +86,80 @@ def create_task(project_id: UUID, task_data: TaskCreate, db: Session = Depends(g
     try:
         db.add(task)
         db.commit()
-        db.refresh(task)
     except IntegrityError:
         db.rollback()
         raise HTTPException(status_code=400)
 
+    db.refresh(task)
+
     return task
+
+
+@router.patch("/{task_id}", response_model=TaskResponse)
+def modify_task(
+    task_id: UUID, task_modify_data: TaskModify, db: Session = Depends(get_db)
+):
+    """Modify a task.
+
+    Args:
+        task_id: ID of the task.
+        task_modify_data: title, description, status and priority.
+
+    Raises:
+        HTTPException: If the task is not found.
+        HTTPException: If database integrity constraint is violated.
+
+    Returns:
+        The modified task.
+    """
+    task = get_task_by_id(task_id, db)
+    if task is None:
+        raise HTTPException(status_code=404, detail="Task not found.")
+
+    modify_data = task_modify_data.model_dump(exclude_unset=True)
+
+    for field, value in modify_data.items():
+        setattr(task, field, value)
+
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=400)
+
+    db.refresh(task)
+
+    return task
+
+
+@router.delete("/{task_id}")
+def delete_task(task_id: UUID, db: Session = Depends(get_db)):
+    """Delete a task.
+
+    Args:
+        task_id: ID of the task.
+
+    Raises:
+        HTTPException: If the task is not found.
+        HTTPException: If database integrity constraint is violated.
+
+    Returns:
+        Confirmation message.
+    """
+    # TODO: Update once comments and/or authentication is implemented
+    task = get_task_by_id(task_id, db)
+
+    if task is None:
+        raise HTTPException(status_code=404, detail="Task not found.")
+
+    try:
+        db.delete(task)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=400)
+
+    return {"message": "Success"}
 
 
 @router.get("/{task_id}", response_model=TaskDetailResponse)
