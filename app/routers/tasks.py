@@ -1,4 +1,5 @@
 from uuid import UUID
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
@@ -120,6 +121,7 @@ def modify_task(
 
     for field, value in modify_data.items():
         setattr(task, field, value)
+    task.updated_at = datetime.now(timezone.utc)
 
     try:
         db.commit()

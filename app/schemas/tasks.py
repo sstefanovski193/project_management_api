@@ -1,12 +1,10 @@
 from uuid import UUID
 from datetime import datetime
+from enum import Enum
 
 from pydantic import BaseModel, ConfigDict
 
 from app.models import Status, Priority
-
-
-from enum import Enum
 
 
 class TaskSortField(str, Enum):
@@ -45,6 +43,7 @@ class TaskResponse(BaseModel):
     priority: Priority
     created_at: datetime
     updated_at: datetime
+    project_id: UUID
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -77,12 +76,34 @@ class TaskAssigneeResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class TaskCommentAuthorResponse(BaseModel):
+    """Author information included in a task comment response."""
+
+    id: UUID
+    username: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class TaskCommentResponse(BaseModel):
+    """Task information included in a detailed task response"""
+
+    id: UUID
+    content: str
+    created_at: datetime
+    updated_at: datetime
+    author: TaskCommentAuthorResponse | None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class TaskDetailResponse(TaskResponse):
-    """Response representation for a task, including projec,t creator and assignees."""
+    """Response representation for a task, including project, creator, assignees and comments."""
 
     project: TaskProjectResponse
     creator: TaskCreatorResponse | None
     assignees: list[TaskAssigneeResponse]
+    comments: list[TaskCommentResponse]
 
 
 class TaskAssigneeCreate(BaseModel):

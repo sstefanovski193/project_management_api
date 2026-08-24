@@ -3,7 +3,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
-from app.models import Task
+from app.models import Task, Comment
 
 
 def get_task_by_id(task_id: UUID, db: Session) -> Task | None:
@@ -23,7 +23,7 @@ def get_task_by_id(task_id: UUID, db: Session) -> Task | None:
 
 
 def get_task_by_id_with_relationships(task_id: UUID, db: Session) -> Task | None:
-    """Retrieve task by ID with related project, creator, and assignees loaded.
+    """Retrieve task by ID with related project, creator, assignees and comments loaded.
 
     Args:
         task_id: ID of the task.
@@ -39,6 +39,7 @@ def get_task_by_id_with_relationships(task_id: UUID, db: Session) -> Task | None
             selectinload(Task.project),
             selectinload(Task.creator),
             selectinload(Task.assignees),
+            selectinload(Task.comments).selectinload(Comment.author),
         )
     )
     task = db.execute(task_query).scalar_one_or_none()
