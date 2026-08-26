@@ -17,7 +17,6 @@ class TaskSortField(str, Enum):
 class TaskCreate(BaseModel):
     """Data required to create a task."""
 
-    creator_id: UUID
     title: str
     description: str | None = None
     status: Status = Status.TODO

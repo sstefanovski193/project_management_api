@@ -6,19 +6,10 @@ from pydantic import BaseModel, ConfigDict
 from app.models import Status, Priority
 
 
-class CommentCreate(BaseModel):
-    """Data required to create a comment."""
-
-    # TODO: update once authentication is implemented
-    user_id: UUID
-    content: str
-
-
-class CommentModify(BaseModel):
-    """Data required to modify a comment."""
+class CommentData(BaseModel):
+    """Data required to create or modify a comment."""
 
     content: str
-    user_id: UUID
 
 
 class CommentResponse(BaseModel):

@@ -25,48 +25,47 @@ from app.schemas.tasks import (
     TaskModify,
 )
 from app.schemas.common import SortOrder
+from app.services.auth import get_current_user
 from app.services.tasks import (
     get_task_by_id,
     get_task_by_id_with_relationships,
 )
+from app.services.projects import get_project_membership
 
 router = APIRouter(prefix="/tasks", tags=["Tasks"])
 project_task_router = APIRouter(prefix="/projects/{project_id}/tasks", tags=["Tasks"])
 
 
 @project_task_router.post("", response_model=TaskResponse)
-def create_task(project_id: UUID, task_data: TaskCreate, db: Session = Depends(get_db)):
+def create_task(
+    project_id: UUID,
+    task_data: TaskCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     """Create a task.
 
     Args:
         project_id: ID of the project.
-        task_data: creator_id, title, description, status and priority.
+        task_data: title, description, status and priority of the task.
 
     Raises:
         HTTPException: If the project is not found.
-        HTTPException: if the user is not found.
         HTTPException: If the user is not a member of the project.
         HTTPException: If database integrity constraint is violated.
 
     Returns:
         The created task.
     """
-    # TODO: update creator_id once authentication is implemented
     project_query = select(Project).where(Project.id == project_id)
     project = db.execute(project_query).scalar_one_or_none()
 
     if project is None:
         raise HTTPException(status_code=404, detail="Project not found.")
 
-    user_query = select(User).where(User.id == task_data.creator_id)
-    user = db.execute(user_query).scalar_one_or_none()
-
-    if user is None:
-        raise HTTPException(status_code=404, detail="User not found.")
-
     project_membership_query = select(ProjectMember).where(
         ProjectMember.project_id == project_id,
-        ProjectMember.user_id == task_data.creator_id,
+        ProjectMember.user_id == current_user.id,
     )
     project_membership = db.execute(project_membership_query).scalar_one_or_none()
 
@@ -77,7 +76,7 @@ def create_task(project_id: UUID, task_data: TaskCreate, db: Session = Depends(g
 
     task = Task(
         project_id=project_id,
-        creator_id=task_data.creator_id,
+        creator_id=current_user.id,
         title=task_data.title,
         description=task_data.description,
         status=task_data.status,
@@ -135,7 +134,11 @@ def modify_task(
 
 
 @router.delete("/{task_id}")
-def delete_task(task_id: UUID, db: Session = Depends(get_db)):
+def delete_task(
+    task_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     """Delete a task.
 
     Args:
@@ -143,6 +146,7 @@ def delete_task(task_id: UUID, db: Session = Depends(get_db)):
 
     Raises:
         HTTPException: If the task is not found.
+        HTTPException: If the user is not a member of the task's project.
         HTTPException: If database integrity constraint is violated.
 
     Returns:
@@ -153,6 +157,13 @@ def delete_task(task_id: UUID, db: Session = Depends(get_db)):
 
     if task is None:
         raise HTTPException(status_code=404, detail="Task not found.")
+
+    project_membership = get_project_membership(current_user.id, task.project_id, db)
+
+    if project_membership is None:
+        raise HTTPException(
+            status_code=403, detail="User is not a member of the project."
+        )
 
     try:
         db.delete(task)

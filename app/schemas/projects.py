@@ -22,8 +22,6 @@ class ProjectCreate(BaseModel):
 
     name: str
     description: str | None = None
-    creator_id: UUID
-    # TODO: remove creator_id once authentication is implemented
 
 
 class ProjectResponse(BaseModel):

@@ -10,6 +10,7 @@ dependencies = [
     "pydantic-settings",
     "alembic",
     "pwdlib[argon2]",
+    "PyJWT",
 ]
 
 [tool.setuptools.packages.find]

@@ -7,7 +7,11 @@ class Settings(BaseSettings):
     postgres_password: str
     postgres_db: str
 
-    model_config = SettingsConfigDict(env_file=".env")
+    jwt_secret_key: str
+    jwt_algorithm: str
+    access_token_expire_minutes: int = 30
+
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 
 settings = Settings()
