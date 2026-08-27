@@ -3,7 +3,22 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import ProjectMember, ProjectRole
+from app.models import ProjectMember, ProjectRole, Project
+
+
+def get_project_by_id(project_id: UUID, db: Session) -> Project | None:
+    """Retrieve project by ID.
+
+    Args:
+        project_id: ID of the project.
+        db: SQLAlchemy database Session.
+
+    Returns:
+        Project if found or None.
+    """
+    project_query = select(Project).where(Project.id == project_id)
+
+    return db.execute(project_query).scalar_one_or_none()
 
 
 def get_project_membership(
@@ -27,7 +42,7 @@ def get_project_membership(
 
 
 def is_project_manager(user_id: UUID, project_id: UUID, db: Session) -> bool:
-    """Retrieve user manager membership in a project.
+    """Checks whether a user is a manager of a project.
 
     Args:
         project_id: ID of the project.
@@ -35,9 +50,8 @@ def is_project_manager(user_id: UUID, project_id: UUID, db: Session) -> bool:
         db: SQLAlchemy database Session.
 
     Returns:
-       Manager membership if found, otherwise None.
+       True if the user is project manager, otherwise False.
     """
-    # TODO: improve authorization
     manager_query = select(ProjectMember).where(
         ProjectMember.user_id == user_id,
         ProjectMember.project_id == project_id,

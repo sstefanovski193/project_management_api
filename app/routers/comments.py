@@ -7,12 +7,13 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
 from app.db.database import get_db
-from app.models import Comment, Task, ProjectMember, ProjectRole, User
+from app.models import Comment, Task, ProjectMember, User
 from app.schemas.comments import CommentData, CommentResponse, CommentResponseDetailed
 from app.services.auth import get_current_user
-from app.services.comments import (
-    get_comment_by_id,
-    get_comment_by_id_with_relationships,
+from app.dependencies.authorization import (
+    require_comment_author,
+    require_comment_delete_rights,
+    require_comment_project_member,
 )
 
 router = APIRouter(prefix="/comments", tags=["Comments"])
@@ -77,35 +78,23 @@ def create_comment(
 
 @router.patch("/{comment_id}", response_model=CommentResponse)
 def modify_comment(
-    comment_id: UUID,
     comment_data: CommentData,
-    current_user: User = Depends(get_current_user),
+    comment: Comment = Depends(require_comment_author),
     db: Session = Depends(get_db),
 ):
     """Modify a comment.
 
+    Only the comment author can modify a comment.
+
     Args:
-        comment_id: ID of the comment.
         comment_data: content of the comment.
 
     Raises:
-        HTTPException: If the comment is not found.
-        HTTPException: If the user is not the author of the comment.
         HTTPException: If database integrity constraint is violated.
 
     Returns:
         The modified comment.
     """
-    comment = get_comment_by_id(comment_id, db)
-
-    if comment is None:
-        raise HTTPException(status_code=404, detail="Comment not found.")
-
-    if comment.user_id != current_user.id:
-        raise HTTPException(
-            status_code=403, detail="The user is not the author of the comment."
-        )
-
     comment.content = comment_data.content
     comment.updated_at = datetime.now(timezone.utc)
 
@@ -121,44 +110,22 @@ def modify_comment(
 
 @router.delete("/{comment_id}")
 def delete_comment(
-    comment_id: UUID,
-    current_user: User = Depends(get_current_user),
+    comment: Comment = Depends(require_comment_delete_rights),
     db: Session = Depends(get_db),
 ):
     """Delete a comment.
+
+    Only comment author or project manager can delete a comment.
 
     Args:
         comment_id: ID of the comment.
 
     Raises:
-        HTTPException: If the comment is not found.
-        HTTPException: If the user is not the owner of the comment.
-        HTTPException: If the user is not the manager of the project.
         HTTPException: If database integrity constraint is violated.
 
     Returns:
         Confirmation message.
     """
-    comment = get_comment_by_id_with_relationships(comment_id, db)
-
-    if comment is None:
-        raise HTTPException(status_code=404, detail="Comment not found.")
-
-    project_ownership_query = select(ProjectMember).where(
-        ProjectMember.user_id == current_user.id,
-        ProjectMember.project_id == comment.task.project_id,
-        ProjectMember.role == ProjectRole.MANAGER,
-    )
-    project_ownership = (
-        db.execute(project_ownership_query).scalar_one_or_none() is not None
-    )
-    is_author = comment.user_id == current_user.id
-
-    if not is_author and not project_ownership:
-        raise HTTPException(
-            status_code=403, detail="The user is not permitted to delete the comment."
-        )
-
     try:
         db.delete(comment)
         db.commit()
@@ -170,22 +137,12 @@ def delete_comment(
 
 
 @router.get("/{comment_id}", response_model=CommentResponseDetailed)
-def get_comment(comment_id: UUID, db: Session = Depends(get_db)):
-    """Retrieve comment
+def get_comment(comment: Comment = Depends(require_comment_project_member)):
+    """Retrieve comment.
 
-    Args:
-        comment_id: ID of the comment.
-
-    Raises:
-        HTTPException: If the comment is not found.
+    The authenticated user must be member of the comment's project.
 
     Returns:
         The requested comment.
     """
-
-    comment = get_comment_by_id_with_relationships(comment_id, db)
-
-    if comment is None:
-        raise HTTPException(status_code=404, detail="Comment not found.")
-
     return comment

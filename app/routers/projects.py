@@ -7,7 +7,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.db.database import get_db
 from app.services.auth import get_current_user
-from app.models import User, Project, ProjectMember, ProjectRole
+from app.models import User, Project, ProjectMember, ProjectRole, Task
 from app.schemas.projects import (
     ProjectCreate,
     ProjectResponse,
@@ -17,7 +17,9 @@ from app.schemas.projects import (
     ProjectMemberResponse,
 )
 from app.schemas.common import SortOrder
-from app.services.projects import get_project_membership, is_project_manager
+from app.services.projects import get_project_by_id, get_project_membership
+from app.services.users import get_user_by_id
+from app.dependencies.authorization import require_admin, require_project_manager
 
 router = APIRouter(prefix="/projects", tags=["Projects"])
 
@@ -62,14 +64,55 @@ def create_project(
     return project
 
 
-@router.post("/{project_id}/members", response_model=ProjectMemberResponse)
+@router.delete("/{project_id}", dependencies=[Depends(require_admin)])
+def delete_project(project_id: UUID, db: Session = Depends(get_db)):
+    """Delete project.
+
+    Only application administrators can delete projects.
+
+    Args:
+        project_id: ID of the project.
+
+    Raises:
+        HTTPException: If the project is not found.
+        HTTPException: If database integrity constraint is violated.
+
+    Returns:
+        Confirmation message.
+    """
+    project = get_project_by_id(project_id, db)
+    if project is None:
+        raise HTTPException(status_code=404, detail="Project not found.")
+
+    task_query = select(Task).where(Task.project_id == project_id).limit(1)
+    task = db.execute(task_query).scalar_one_or_none()
+
+    if task is not None:
+        raise HTTPException(
+            status_code=409, detail="Project cannot be deleted while it contains tasks."
+        )
+
+    try:
+        db.delete(project)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=400)
+
+    return {"message": "Success"}
+
+
+@router.post(
+    "/{project_id}/members",
+    response_model=ProjectMemberResponse,
+    dependencies=[Depends(require_project_manager)],
+)
 def add_project_member(
-    project_id: UUID,
-    project_member: ProjectMemberCreate,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    project_id: UUID, project_member: ProjectMemberCreate, db: Session = Depends(get_db)
 ):
     """Add a member to a project.
+
+    Only project managers can add project members.
 
     Args:
         project_id: Project.id
@@ -77,25 +120,15 @@ def add_project_member(
 
     Raises:
         HTTPException: If user is not found.
-        HTTPException: If project is not found.
         HTTPException: If the user is already a member of the project.
-        HTTPException: If the current user is not the manager of the project.
         HTTPException: If database integrity constraint is violated.
 
     Returns:
         The created project membership.
     """
-    member_query = select(User).where(User.id == project_member.user_id)
-    member = db.execute(member_query).scalar_one_or_none()
-
-    if member is None:
+    user = get_user_by_id(project_member.user_id, db)
+    if user is None:
         raise HTTPException(status_code=404, detail="User not found")
-
-    project_query = select(Project).where(Project.id == project_id)
-    project = db.execute(project_query).scalar_one_or_none()
-
-    if project is None:
-        raise HTTPException(status_code=404, detail="Project not found")
 
     existing_membership = get_project_membership(project_member.user_id, project_id, db)
     if existing_membership is not None:
@@ -103,14 +136,8 @@ def add_project_member(
             status_code=409, detail="The user is already a member of this project"
         )
 
-    project_manager = is_project_manager(current_user.id, project_id, db)
-    if project_manager is None:
-        raise HTTPException(
-            status_code=403, detail="Not authorized to add member to the project."
-        )
-
     new_membership = ProjectMember(
-        user_id=project_member.user_id, project_id=project_id, role=ProjectRole.MEMBER
+        user_id=project_member.user_id, project_id=project_id, role=project_member.role
     )
 
     try:
@@ -125,14 +152,15 @@ def add_project_member(
     return new_membership
 
 
-@router.delete("/{project_id}/members/{user_id}")
+@router.delete(
+    "/{project_id}/members/{user_id}", dependencies=[Depends(require_project_manager)]
+)
 def delete_project_member(
-    project_id: UUID,
-    user_id: UUID,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    project_id: UUID, user_id: UUID, db: Session = Depends(get_db)
 ):
     """Delete a member from a project.
+
+    Only project managers can delete project members.
 
     Args:
         project_id: ID of the project.
@@ -140,7 +168,6 @@ def delete_project_member(
 
     Raises:
         HTTPException: If project membership is not found.
-        HTTPException: If the current user is not the manager of the project.
         HTTPException: If database integrity constraint is violated.
 
     Returns:
@@ -149,12 +176,6 @@ def delete_project_member(
     existing_membership = get_project_membership(user_id, project_id, db)
     if existing_membership is None:
         raise HTTPException(status_code=404, detail="Project membership not found")
-
-    project_manager = is_project_manager(current_user.id, project_id, db)
-    if project_manager is None:
-        raise HTTPException(
-            status_code=403, detail="Not authorized to remove project member."
-        )
 
     try:
         db.delete(existing_membership)

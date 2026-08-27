@@ -10,6 +10,8 @@ from app.models import User, ApplicationRole
 from app.schemas.users import UserCreate, UserResponse, UserSortField
 from app.schemas.common import SortOrder
 from app.security import hash_password
+from app.dependencies.authorization import require_admin
+from app.services.users import get_user_by_id
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
@@ -22,7 +24,7 @@ def create_user(user_data: UserCreate, db: Session = Depends(get_db)):
         user_data: Username, email and password.
 
     Raises:
-        HTTPException: If the user doesn't exist.
+        HTTPException: If the user already exist.
 
     Returns:
         The created user.
@@ -45,6 +47,36 @@ def create_user(user_data: UserCreate, db: Session = Depends(get_db)):
     return user
 
 
+@router.delete("/{user_id}", dependencies=[Depends(require_admin)])
+def delete_user(user_id: UUID, db: Session = Depends(get_db)):
+    """Delete user.
+
+    Only application administrators can delete users.
+
+    Args:
+        user_id: ID of the user.
+
+    Raises:
+        HTTPException: If the user is not found.
+        HTTPException: If a database integrity constraint is violated.
+
+    Returns:
+        Confirmation message.
+    """
+    user = get_user_by_id(user_id, db)
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found.")
+
+    try:
+        db.delete(user)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=400)
+
+    return {"message": "Success"}
+
+
 @router.get("/{user_id}", response_model=UserResponse)
 def get_user(user_id: UUID, db: Session = Depends(get_db)):
     """Get user by ID.
@@ -58,9 +90,8 @@ def get_user(user_id: UUID, db: Session = Depends(get_db)):
     Returns:
         The requested user.
     """
-    query = select(User).where(User.id == user_id)
-    user = db.execute(query).scalar_one_or_none()
 
+    user = get_user_by_id(user_id, db)
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
 
