@@ -53,14 +53,18 @@ class User(Base):
         nullable=False,
         default=lambda: datetime.now(timezone.utc),
     )
-    created_tasks: Mapped[list["Task"]] = relationship(back_populates="creator")
+    created_tasks: Mapped[list["Task"]] = relationship(
+        back_populates="creator", passive_deletes=True
+    )
     project_memberships: Mapped[list["ProjectMember"]] = relationship(
-        back_populates="user"
+        back_populates="user", passive_deletes=True
     )
     assigned_tasks: Mapped[list["Task"]] = relationship(
-        secondary="task_assignees", back_populates="assignees"
+        secondary="task_assignees", back_populates="assignees", passive_deletes=True
     )
-    comments: Mapped[list["Comment"]] = relationship(back_populates="author")
+    comments: Mapped[list["Comment"]] = relationship(
+        back_populates="author", passive_deletes=True
+    )
 
 
 class Project(Base):
@@ -79,8 +83,12 @@ class Project(Base):
         nullable=False,
         default=lambda: datetime.now(timezone.utc),
     )
-    tasks: Mapped[list["Task"]] = relationship(back_populates="project")
-    memberships: Mapped[list["ProjectMember"]] = relationship(back_populates="project")
+    tasks: Mapped[list["Task"]] = relationship(
+        back_populates="project", passive_deletes=True
+    )
+    memberships: Mapped[list["ProjectMember"]] = relationship(
+        back_populates="project", passive_deletes=True
+    )
 
 
 class ProjectMember(Base):
@@ -144,9 +152,13 @@ class Task(Base):
     project: Mapped["Project"] = relationship(back_populates="tasks")
     creator: Mapped["User | None"] = relationship(back_populates="created_tasks")
     assignees: Mapped[list["User"]] = relationship(
-        secondary="task_assignees", back_populates="assigned_tasks"
+        secondary="task_assignees",
+        back_populates="assigned_tasks",
+        passive_deletes=True,
     )
-    comments: Mapped[list["Comment"]] = relationship(back_populates="task")
+    comments: Mapped[list["Comment"]] = relationship(
+        back_populates="task", passive_deletes=True
+    )
 
 
 class TaskAssignee(Base):
