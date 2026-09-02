@@ -94,7 +94,7 @@ def require_project_member(
 
 def require_task_project_member(
     task_id: UUID,
-    current_user: UUID = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> Task:
     """Require the authenticated current user to be member of the task's project.
@@ -124,7 +124,7 @@ def require_task_project_member(
 
 def require_task_project_member_with_relationships(
     task_id: UUID,
-    current_user: UUID = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> Task:
     """Require the authenticated current user to be member of the task's project.

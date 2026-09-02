@@ -14,6 +14,7 @@ from app.dependencies.authorization import (
     require_comment_author,
     require_comment_delete_rights,
     require_comment_project_member,
+    require_task_project_member,
 )
 
 router = APIRouter(prefix="/comments", tags=["Comments"])
@@ -22,44 +23,26 @@ task_comment_router = APIRouter(prefix="/tasks/{task_id}/comments", tags=["Comme
 
 @task_comment_router.post("", response_model=CommentResponse)
 def create_comment(
-    task_id: UUID,
     comment_data: CommentData,
+    task: Task = Depends(require_task_project_member),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Create a comment.
 
+    Only project members can create comments on a task.
+
     Args:
-        task_id: ID of the task.
         comment_data: content of the comment.
 
     Raises:
-        HTTPException: If the task is not found.
-        HTTPException: If the user is not a member of the project.
         HTTPException: If database integrity constraint is violated.
 
     Returns:
         The created comment.
     """
-    task_query = select(Task).where(Task.id == task_id)
-    task = db.execute(task_query).scalar_one_or_none()
-
-    if task is None:
-        raise HTTPException(status_code=404, detail="Task is not found.")
-
-    project_membership_query = select(ProjectMember).where(
-        ProjectMember.user_id == current_user.id,
-        ProjectMember.project_id == task.project_id,
-    )
-    project_membership = db.execute(project_membership_query).scalar_one_or_none()
-
-    if project_membership is None:
-        raise HTTPException(
-            status_code=403, detail="The user is not a member of the project."
-        )
-
     comment = Comment(
-        task_id=task_id,
+        task_id=task.id,
         user_id=current_user.id,
         content=comment_data.content,
     )
@@ -116,9 +99,6 @@ def delete_comment(
     """Delete a comment.
 
     Only comment author or project manager can delete a comment.
-
-    Args:
-        comment_id: ID of the comment.
 
     Raises:
         HTTPException: If database integrity constraint is violated.

@@ -11,6 +11,7 @@ from app.schemas.users import UserCreate, UserResponse, UserSortField
 from app.schemas.common import SortOrder
 from app.security import hash_password
 from app.dependencies.authorization import require_admin
+from app.services.auth import get_current_user
 from app.services.users import get_user_by_id
 
 router = APIRouter(prefix="/users", tags=["Users"])
@@ -77,7 +78,9 @@ def delete_user(user_id: UUID, db: Session = Depends(get_db)):
     return {"message": "Success"}
 
 
-@router.get("/{user_id}", response_model=UserResponse)
+@router.get(
+    "/{user_id}", response_model=UserResponse, dependencies=[Depends(get_current_user)]
+)
 def get_user(user_id: UUID, db: Session = Depends(get_db)):
     """Get user by ID.
 
@@ -98,7 +101,9 @@ def get_user(user_id: UUID, db: Session = Depends(get_db)):
     return user
 
 
-@router.get("", response_model=list[UserResponse])
+@router.get(
+    "", response_model=list[UserResponse], dependencies=[Depends(get_current_user)]
+)
 def get_users(
     limit: int = Query(default=50, ge=1, le=250),
     offset: int = Query(default=0, ge=0),

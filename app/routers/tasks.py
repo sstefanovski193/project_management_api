@@ -11,7 +11,6 @@ from app.models import (
     Task,
     Project,
     User,
-    ProjectMember,
     TaskAssignee,
     Status,
     Priority,
@@ -30,6 +29,9 @@ from app.dependencies.authorization import (
     require_task_project_member,
     require_task_project_member_with_relationships,
 )
+from app.services.auth import get_current_user
+from app.services.projects import get_project_membership
+from app.services.tasks import get_task_assignee
 
 router = APIRouter(prefix="/tasks", tags=["Tasks"])
 project_task_router = APIRouter(prefix="/projects/{project_id}/tasks", tags=["Tasks"])
@@ -131,9 +133,9 @@ def delete_task(
     try:
         db.delete(task)
         db.commit()
-    except IntegrityError as exc:
+    except IntegrityError:
         db.rollback()
-        raise HTTPException(status_code=400, detail=str(exc.orig))
+        raise HTTPException(status_code=400)
 
     return {"message": "Success"}
 
@@ -150,7 +152,9 @@ def get_task(task: Task = Depends(require_task_project_member_with_relationships
     return task
 
 
-@router.get("", response_model=list[TaskResponse])
+@router.get(
+    "", response_model=list[TaskResponse], dependencies=[Depends(get_current_user)]
+)
 def get_tasks(
     username: str | None = None,
     project_name: str | None = None,
@@ -234,20 +238,14 @@ def add_task_assignee(
     if user is None:
         raise HTTPException(status_code=404, detail="User not found.")
 
-    project_member_query = select(ProjectMember).where(
-        ProjectMember.user_id == user.id, ProjectMember.project_id == task.project_id
-    )
-    project_member = db.execute(project_member_query).scalar_one_or_none()
+    project_member = get_project_membership(user.id, task.project_id, db)
 
     if project_member is None:
         raise HTTPException(
             status_code=403, detail="The user is not a member of the project."
         )
 
-    task_assignee_query = select(TaskAssignee).where(
-        TaskAssignee.task_id == task.id, TaskAssignee.user_id == user.id
-    )
-    task_assignee = db.execute(task_assignee_query).scalar_one_or_none()
+    task_assignee = get_task_assignee(task.id, user.id, db)
 
     if task_assignee:
         raise HTTPException(
@@ -286,10 +284,7 @@ def delete_task_assignee(
     Returns:
         Confirmation message.
     """
-    task_assignee_query = select(TaskAssignee).where(
-        TaskAssignee.task_id == task.id, TaskAssignee.user_id == user_id
-    )
-    task_assignee = db.execute(task_assignee_query).scalar_one_or_none()
+    task_assignee = get_task_assignee(task.id, user_id, db)
 
     if task_assignee is None:
         raise HTTPException(

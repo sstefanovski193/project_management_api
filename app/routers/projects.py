@@ -19,7 +19,11 @@ from app.schemas.projects import (
 from app.schemas.common import SortOrder
 from app.services.projects import get_project_by_id, get_project_membership
 from app.services.users import get_user_by_id
-from app.dependencies.authorization import require_admin, require_project_manager
+from app.dependencies.authorization import (
+    require_admin,
+    require_project_manager,
+    require_project_member,
+)
 
 router = APIRouter(prefix="/projects", tags=["Projects"])
 
@@ -31,6 +35,8 @@ def create_project(
     db: Session = Depends(get_db),
 ):
     """Create a project.
+
+    The current authenticated user is set as manager of the new project.
 
     Args:
         project_data: Name, description of the project.
@@ -116,7 +122,7 @@ def add_project_member(
 
     Args:
         project_id: Project.id
-        project_member: user_id and ProjectRole.MEMBER.
+        project_member: user and role of the new member.
 
     Raises:
         HTTPException: If user is not found.
@@ -187,7 +193,11 @@ def delete_project_member(
     return {"message": "Project member removed successfully"}
 
 
-@router.get("/{project_id}", response_model=ProjectDetailResponse)
+@router.get(
+    "/{project_id}",
+    response_model=ProjectDetailResponse,
+    dependencies=[Depends(require_project_member)],
+)
 def get_project(project_id: UUID, db: Session = Depends(get_db)):
     """Get project by ID.
 
@@ -216,7 +226,9 @@ def get_project(project_id: UUID, db: Session = Depends(get_db)):
     return project
 
 
-@router.get("", response_model=list[ProjectResponse])
+@router.get(
+    "", response_model=list[ProjectResponse], dependencies=[Depends(get_current_user)]
+)
 def get_projects(
     limit: int = Query(default=50, ge=1, le=250),
     offset: int = Query(default=0, ge=0),
