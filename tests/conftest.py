@@ -8,7 +8,17 @@ from sqlalchemy.orm import sessionmaker
 from fastapi.testclient import TestClient
 
 from app.config import settings
-from app.models import Base, User, ApplicationRole
+from app.models import (
+    Base,
+    User,
+    ApplicationRole,
+    Project,
+    ProjectRole,
+    ProjectMember,
+    Task,
+    Status,
+    Priority,
+)
 from app.db.database import get_db
 from app.main import app
 from app.security import hash_password
@@ -46,6 +56,8 @@ def db():
 
 @pytest.fixture
 def client(db):
+    """Provide a test client using the isolated database session."""
+
     def override_get_db():
         yield db
 
@@ -119,3 +131,88 @@ def admin_auth_headers(client, admin_user):
     token = response.json()["access_token"]
 
     return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture
+def project(db, user):
+    """Create a project with the regular user as its manager."""
+    project = Project(name="Project Name", description="Project Description")
+
+    db.add(project)
+    db.flush()
+
+    project_membership = ProjectMember(
+        user_id=user.id, project_id=project.id, role=ProjectRole.MANAGER
+    )
+
+    db.add(project_membership)
+    db.commit()
+    db.refresh(project)
+
+    return project
+
+
+@pytest.fixture
+def another_user(db):
+    """Create another regular user for testing."""
+    another_user = User(
+        username="another_test_user",
+        email="another_test_user@email.com",
+        password_hash=hash_password("another_test_user_password"),
+        application_role=ApplicationRole.USER,
+    )
+
+    db.add(another_user)
+    db.commit()
+    db.refresh(another_user)
+
+    return another_user
+
+
+@pytest.fixture
+def another_auth_headers(client, another_user):
+    """Return authentication headers for another regular user."""
+    response = client.post(
+        "/auth/login",
+        data={
+            "username": another_user.username,
+            "password": "another_test_user_password",
+        },
+    )
+
+    assert response.status_code == 200
+
+    token = response.json()["access_token"]
+
+    return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture
+def project_member(project, another_user, db):
+    """Add another regular user to the project as a member."""
+    project_member = ProjectMember(
+        user_id=another_user.id, project_id=project.id, role=ProjectRole.MEMBER
+    )
+
+    db.add(project_member)
+    db.commit()
+    db.refresh(project_member)
+
+    return project_member
+
+
+@pytest.fixture
+def task(project, db):
+    """Create a task in the test project."""
+    task = Task(
+        project_id=project.id,
+        title="Test Task",
+        status=Status.TODO,
+        priority=Priority.MEDIUM,
+    )
+
+    db.add(task)
+    db.commit()
+    db.refresh(task)
+
+    return task
