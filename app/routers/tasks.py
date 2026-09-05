@@ -196,6 +196,7 @@ def get_tasks(
     sort_columns = {
         TaskSortField.CREATED_AT: Task.created_at,
         TaskSortField.UPDATED_AT: Task.updated_at,
+        TaskSortField.TITLE: Task.title,
     }
     sort_column = sort_columns[sort_by]
 

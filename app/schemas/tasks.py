@@ -10,6 +10,7 @@ from app.models import Status, Priority
 class TaskSortField(str, Enum):
     """Fields available for sorting tasks."""
 
+    TITLE = "title"
     CREATED_AT = "created_at"
     UPDATED_AT = "updated_at"
 

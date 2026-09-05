@@ -1,13 +1,11 @@
-from uuid import UUID
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
 from app.db.database import get_db
-from app.models import Comment, Task, ProjectMember, User
+from app.models import Comment, Task, User
 from app.schemas.comments import CommentData, CommentResponse, CommentResponseDetailed
 from app.services.auth import get_current_user
 from app.dependencies.authorization import (

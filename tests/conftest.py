@@ -18,6 +18,8 @@ from app.models import (
     Task,
     Status,
     Priority,
+    TaskAssignee,
+    Comment,
 )
 from app.db.database import get_db
 from app.main import app
@@ -216,3 +218,27 @@ def task(project, db):
     db.refresh(task)
 
     return task
+
+
+@pytest.fixture
+def task_assignee(task, user, db):
+    """Assign the regular user to the test task."""
+    task_assignee = TaskAssignee(task_id=task.id, user_id=user.id)
+
+    db.add(task_assignee)
+    db.commit()
+    db.refresh(task_assignee)
+
+    return task_assignee
+
+
+@pytest.fixture
+def comment(task, user, db):
+    """Create a comment authored by the regular user."""
+    comment = Comment(task_id=task.id, user_id=user.id, content="Comment Test Data")
+
+    db.add(comment)
+    db.commit()
+    db.refresh(comment)
+
+    return comment
